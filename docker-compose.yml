@@ -1,0 +1,45 @@
+version: "3"
+services:
+
+  devstack:
+    image: tianon/true
+    restart: "no"
+    depends_on:
+      - devstack_tools
+      - devstack_app_deps
+
+  devstack_app_deps:
+    image: tianon/true
+    restart: "no"
+    depends_on:
+      - postgres
+
+  devstack_tools:
+    image: tianon/true
+    restart: "no"
+    depends_on:
+      - pgadmin
+
+  postgres:
+    container_name: gosls_postgres
+    image: postgres:latest
+    command: ["postgres", "-c", "log_statement=all"]
+    ports:
+      - "5432:5432"
+    env_file:
+      - ./devstack/.env
+    volumes:
+      - ./devstack/postgres/init:/docker-entrypoint-initdb.d
+      - ./devstack/postgres/data:/var/lib/postgresql/data/ # persist data even if container shuts down
+
+  pgadmin:
+    container_name: gosls_pgadmin
+    image: dpage/pgadmin4:5.4
+    env_file:
+      - ./devstack/.env
+    depends_on:
+      - "postgres"
+    ports:
+      - 5050:5050
+    volumes:
+      - "./devstack/pgadmin/config/servers.json:/pgadmin4/servers.json"

@@ -1,0 +1,385 @@
+openapi: 3.0.0
+
+info:
+  title: Rust serverless CDK template
+  version: "0.1"
+  description: "API to facilitate running office games"
+  contact:
+    name: No Contact
+
+servers:
+  - url: "http://localhost:3000/dev"
+
+tags:
+  - name: admin
+
+paths:
+
+  /admin/leagues:
+    get:
+      operationId: searchLeagues
+      summary: Search leagues
+      description: Search leagues
+      tags:
+        - admin
+      security:
+        - DefaultAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PaginationQueryParams"
+      responses:
+        "200":
+          description: Success response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchLeaguesResponseBody"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DefaultErrorResponseBody"
+
+  /admin/leagues/{leagueId}:
+    get:
+      operationId: getLeagueById
+      summary: Find league by ID
+      description: Find league by ID
+      tags:
+        - admin
+      security:
+        - DefaultAuth: []
+      parameters:
+        - in: path
+          name: leagueId
+          description: League ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Success response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetLeagueByIdResponseBody"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DefaultErrorResponseBody"
+
+  /commands/runDatabaseMigrations:
+    post:
+      operationId: runDatabaseMigrations
+      summary: Run database migrations
+      description: Run database migrations
+      tags:
+        - admin
+      security:
+        - DefaultAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DefaultSuccessResponseBody"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DefaultErrorResponseBody"
+
+  /commands/createLeague:
+    post:
+      operationId: createLeague
+      summary: Create a new League
+      description: Create a new League
+      tags:
+        - admin
+      security:
+        - DefaultAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLeagueRequestBody"
+      responses:
+        "200":
+          description: Success response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateLeagueResponseBody"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DefaultErrorResponseBody"
+
+  /commands/updateLeague:
+    post:
+      operationId: updateLeague
+      summary: Updates the values of a League
+      description: Update the values of League
+      tags:
+        - admin
+      security:
+        - DefaultAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLeagueRequestBody"
+      responses:
+        "200":
+          description: Success response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateLeagueResponseBody"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DefaultErrorResponseBody"
+
+  /commands/deleteLeague:
+    post:
+      operationId: deleteLeague
+      summary: Delete league
+      description: Delete league
+      tags:
+        - admin
+      security:
+        - DefaultAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteLeagueRequestBody"
+      responses:
+        "200":
+          description: Success response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteLeagueResponseBody"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DefaultErrorResponseBody"
+
+components:
+
+  parameters:
+    PaginationQueryParams:
+      name: pagination
+      in: query
+      style: form
+      explode: true
+      schema:
+        type: object
+        properties:
+          page:
+            type: integer
+            example: 1
+          limit:
+            type: integer
+            example: 20
+
+  securitySchemes:
+    DefaultAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ApiErrorObject:
+      type: object
+      required:
+        - status
+        - code
+        - title
+        - detail
+      properties:
+        status:
+          type: string
+          example: "500"
+        code:
+          type: string
+          example: "InternalServerError"
+        title:
+          type: string
+          example: "Internal server error"
+        detail:
+          type: string
+          example: "An Unknown error has occured"
+
+    DefaultErrorResponseBody:
+      type: object
+      required:
+        - meta
+        - data
+        - errors
+      properties:
+        meta:
+          type: object
+        data:
+          nullable: true
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApiErrorObject"
+
+    DefaultSuccessResponseBody:
+      type: object
+      required:
+        - meta
+        - data
+        - errors
+      properties:
+        meta:
+          type: object
+        data:
+          nullable: true
+        errors:
+          type: array
+          example: []
+          items:
+            $ref: "#/components/schemas/ApiErrorObject"
+
+    EntityTimestampValues:
+      type: object
+      required:
+        - createdAt
+        - updatedAt
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateLeagueValues:
+      type: object
+      required:
+        - name
+        - description
+      properties:
+        name:
+          type: string
+          example: "My League"
+        description:
+          type: string
+          example: "My great league"
+
+    UpdateLeagueValues:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "My League"
+          nullable: true
+        description:
+          type: string
+          example: "My great league"
+          nullable: true
+
+    SavedLeague:
+      allOf:
+        - $ref: "#/components/schemas/EntityTimestampValues"
+        - $ref: "#/components/schemas/CreateLeagueValues"
+        - type: object
+          required:
+            - id
+          properties:
+            id:
+              type: string
+              format: uuid
+
+    CreateLeagueRequestBody:
+      type: object
+      properties:
+        league:
+          $ref: "#/components/schemas/CreateLeagueValues"
+
+    CreateLeagueResponseBody:
+      allOf:
+        - $ref: "#/components/schemas/DefaultSuccessResponseBody"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/SavedLeague"
+
+    GetLeagueByIdResponseBody:
+      allOf:
+        - $ref: "#/components/schemas/DefaultSuccessResponseBody"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/SavedLeague"
+
+    SearchLeaguesResponseBody:
+      allOf:
+        - $ref: "#/components/schemas/DefaultSuccessResponseBody"
+
+    UpdateLeagueRequestBody:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+            type: string
+            format: uuid
+        league:
+          $ref: "#/components/schemas/UpdateLeagueValues"
+
+    UpdateLeagueResponseBody:
+      allOf:
+        - $ref: "#/components/schemas/DefaultSuccessResponseBody"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/SavedLeague"
+
+    DeleteLeagueRequestBody:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          format: uuid
+
+    DeleteLeagueResponseBody:
+      allOf:
+        - $ref: "#/components/schemas/DefaultSuccessResponseBody"
+        - type: object
+          properties:
+            data:
+              type: object
+              required:
+                - id
+                - deletecAt
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                deletedAt:
+                  type: string
+                  format: date-time
