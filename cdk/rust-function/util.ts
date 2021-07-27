@@ -1,25 +1,7 @@
+import * as os from 'os';
 import { spawnSync, SpawnSyncOptions } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-
-const GO_VERSION_REGEX = /go([0-9]{1,4})+?(\.([0-9]{1,4}))+?(\.([0-9]{1,4}))?/;
-
-export function getGoBuildVersion(): boolean | undefined {
-  try {
-    const go = spawnSync('go', ['version']);
-    if (go.status !== 0 || go.error) {
-      return undefined;
-    }
-    const goVersion = go.stdout.toString().split(' ')[2].match(GO_VERSION_REGEX);
-    if (!goVersion || goVersion[3] <= '11') {
-      return undefined;
-    } else {
-      return true;
-    }
-  } catch (err) {
-    return undefined;
-  }
-}
 
 /**
  * Spawn sync with error handling
@@ -55,4 +37,22 @@ export function findUp(name: string, directory: string = process.cwd()): string 
   }
 
   return findUp(name, path.dirname(absoluteDirectory));
+}
+
+/**
+ * Platform specific path join
+ */
+ export function osPathJoin(platform: NodeJS.Platform) {
+  return function(...paths: string[]): string {
+    const joined = path.join(...paths);
+    // If we are on win32 but need posix style paths
+    if (os.platform() === 'win32' && platform !== 'win32') {
+      return joined.replace(/\\/g, '/');
+    }
+    return joined;
+  };
+}
+
+export function chain(commands: string[]): string {
+  return commands.filter(Boolean).join(' && ');
 }

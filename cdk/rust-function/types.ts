@@ -11,6 +11,8 @@ export interface BundlingOptions {
    */
   readonly environment?: { [key: string]: string; };
 
+  readonly debug?: boolean;
+
   /**
    * Force bundling in a Docker container even if local bundling is
    * possible.
@@ -34,7 +36,7 @@ export interface BundlingOptions {
    *
    * @default - none
    */
-  readonly goBuildFlags?: string[];
+  readonly rustBuildFlags?: string[];
 
   /**
    * Build arguments to pass when building the bundling image.
@@ -87,15 +89,6 @@ export interface BundlingOptions {
    * @default - do not run additional commands
    */
   readonly commandHooks?: ICommandHooks;
-
-  /**
-   * Whether or not to enable cgo during go build
-   *
-   * This will set the CGO_ENABLED environment variable
-   *
-   * @default - false
-   */
-  readonly cgoEnabled?: boolean;
 }
 
 /**

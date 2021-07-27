@@ -1,16 +1,14 @@
 .PHONY: deps.install
 deps.install:
 	# Download packages in cargo.lock file
-	cargo install
+	cargo fetch --locked
 	# Install NodeJS dependences
 	npm ci
 
 .PHONY: deps.update
 deps.update:
 	# Update go dependencies in go.mod and go.sum
-	go get -u ./lambda/...
-	go get -u ./internal/...
-	go mod tidy
+	cargo fetch
 	# Update package.json dependencies and lockfile
 	npm update;
 
@@ -25,8 +23,7 @@ verify.fix:
 
 .PHONY: test
 test:
-	npx dotenv -c -- go test -v -p=1 ./lambda/...
-	npx dotenv -c -- go test -v -p=1 ./internal/...
+	cargo test
 
 .PHONY: devstack.start
 devstack.start:
@@ -52,23 +49,9 @@ dev:
 	sam-beta-cdk local start-api
 
 .PHONY: package
-package: build.release
+package:
 	npx cdk synth
 
 .PHONY: deploy.dev
 deploy.dev:
 	npx cdk deploy --app=cdk.out 'Dev/*'
-
-.PHONY: build.debug
-build.debug:
-	rm -rf ./tmp
-	cargo build --target x86_64-unknown-linux-musl
-	mkdir -p ./tmp/runDatabaseMigrations
-	cp target/x86_64-unknown-linux-musl/debug/run-database-migrations ./tmp/runDatabaseMigrations/bootstrap
-
-.PHONY: build.release
-build.release:
-	rm -rf ./tmp
-	cargo build --release --target x86_64-unknown-linux-musl
-	mkdir -p ./tmp/runDatabaseMigrations
-	cp target/x86_64-unknown-linux-musl/release/run-database-migrations ./tmp/runDatabaseMigrations/bootstrap

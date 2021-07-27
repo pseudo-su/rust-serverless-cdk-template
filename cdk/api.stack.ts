@@ -1,83 +1,10 @@
 import * as cdk from '@aws-cdk/core';
-import { CfnOutput } from '@aws-cdk/core';
-import { AddRoutesOptions, HttpApi, HttpMethod } from '@aws-cdk/aws-apigatewayv2';
+import { HttpMethod } from '@aws-cdk/aws-apigatewayv2';
+import { Api } from './api.construct';
 // import { HttpLambdaAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers";
-import { LambdaProxyIntegration, LambdaProxyIntegrationProps } from '@aws-cdk/aws-apigatewayv2-integrations';
 import { RetentionDays } from '@aws-cdk/aws-logs';
-import { RustFunction, RustFunctionProps } from './rust-function';
+// import { RustFunction } from './rust-function';
 
-type AddOperationOptions = {
-  name: string;
-  description?: string;
-  function: RustFunctionProps;
-  routes: RouteOptions;
-  integration?: Omit<LambdaProxyIntegrationProps, 'handler'>;
-};
-
-type RouteOptions = Omit<AddRoutesOptions, 'integration'>;
-type DefaultRouteOptions = Omit<AddRoutesOptions, 'path' | 'methods'>;
-
-export class Api extends cdk.Construct {
-  api: HttpApi;
-  defaultFunctionProps?: RustFunctionProps;
-  defaultRouteOptions?: DefaultRouteOptions;
-
-  constructor(scope: cdk.Construct, id: string) {
-    super(scope, id);
-
-    this.api = new HttpApi(this, "ApiGateway");
-
-    new CfnOutput(this, 'ApiGatewayUrl', {
-      value: this.api.url!,
-    });
-  }
-
-  setDefaultFunctionProps(props: RustFunctionProps) {
-    this.defaultFunctionProps = props;
-  }
-
-  setDefaultRouteOptions(options: DefaultRouteOptions) {
-    this.defaultRouteOptions = options;
-  }
-
-  addOperation(opts: AddOperationOptions) {
-    const { name } = opts;
-    const functionProps = {
-      ...this.defaultFunctionProps,
-      ...(opts.function || {}),
-      bundling: {
-        ...(this.defaultFunctionProps?.bundling || {}),
-        ...(opts.function.bundling || {}),
-      },
-    };
-
-    const lambdaFunction = new RustFunction(this, `${name}Function`, functionProps);
-
-    const routes = this.api.addRoutes({
-      ...(this.defaultRouteOptions || {}),
-      ...opts.routes,
-      integration: new LambdaProxyIntegration({
-        handler: lambdaFunction,
-        ...opts.integration,
-      }),
-    });
-
-    new CfnOutput(this, `${name}FunctionName`, {
-      value: lambdaFunction.functionName,
-      description: `${name} function name`,
-    });
-
-    new CfnOutput(this, `${name}ApiPath`, {
-      value: routes[0].path!,
-      description: `${name} API path`,
-    });
-
-    return {
-      lambdaFunction,
-      routes,
-    };
-  }
-}
 
 export class ApiStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, properties?: cdk.StackProps) {
@@ -86,14 +13,24 @@ export class ApiStack extends cdk.Stack {
     // const authorizer = new HttpLambdaAuthorizer({
     //   authorizerName: "UserAuthorizer",
     //   handler: new RustFunction(this, `UserAuthorizerFunction`, {
-    //     entry: "lambda/authorizer"
+    //     bin: "authorizer"
     //   }),
     // });
 
     const api = new Api(this, "Api");
 
+    api.setDefaultFunctionProps({
+      environment: {
+        RUST_BACKTRACE: '1',
+      },
+      logRetention: RetentionDays.ONE_WEEK,
+      bundling: {
+        debug: process.env.DEBUG === 'true',
+      }
+    })
+
     api.addOperation({
-      name: 'runDatabaseMigrations',
+      name: 'RunDatabaseMigrations',
       description: 'Run database migrations',
       routes: {
         path: '/commands/runDatabaseMigrations',
@@ -101,11 +38,7 @@ export class ApiStack extends cdk.Stack {
         // authorizer,
       },
       function: {
-        entry: 'tmp/runDatabaseMigrations',
-        environment: {
-          RUST_BACKTRACE: '1',
-        },
-        logRetention: RetentionDays.ONE_WEEK,
+        bin: 'run-database-migrations',
       },
     });
 
