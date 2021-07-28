@@ -1,0 +1,385 @@
+openapi: 3.0.0
+
+info:
+  title: Okta SCIM API
+  version: "0.1"
+  description: |
+    API spec based on the Okta and SCIM Version 2.0 reference documentation
+    https://developer.okta.com/docs/reference/scim/scim-20/
+  contact:
+    name: No Contact
+
+servers:
+  - url: "http://localhost:3000"
+
+tags:
+  - name: users
+
+paths:
+  /scim/v2/Users:
+    get:
+      operationId: searchUsers
+      description: Search users
+      tags:
+        - users
+      security:
+        - ServiceAuth: []
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            type: string
+            example: userName eq "test.user@okta.local"
+        - name: startIndex
+          in: query
+          schema:
+            type: integer
+            example: 1
+        - name: count
+          in: query
+          schema:
+            type: integer
+            example: 100
+      responses:
+        "200":
+          description: Success response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SCIMListResponseBody"
+        "404":
+          description: User already exists in database error
+          content:
+              application/json:
+                schema:
+                    $ref: "#/components/schemas/SCIMErrorResponseBody"
+                example:
+                  schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"]
+                  detail: "User not found"
+                  status: 404
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SCIMErrorResponseBody"
+    post:
+      operationId: createUser
+      description: Create user
+      tags:
+        - users
+      security:
+        - ServiceAuth: []
+      requestBody:
+        content:
+          application/json:
+              schema:
+                $ref: "#/components/schemas/CreateUser"
+      responses:
+        "201":
+          description: Success response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedUser"
+        "409":
+          description: User already exists in database error
+          content:
+              application/json:
+                schema:
+                    $ref: "#/components/schemas/SCIMErrorResponseBody"
+                example:
+                  schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"]
+                  detail: "User already exists in the database."
+                  status: 409
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SCIMErrorResponseBody"
+  /scim/v2/Users/{userId}:
+    get:
+      operationId: getUser
+      description: Get user by ID
+      tags:
+        - users
+      security:
+        - ServiceAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: 23a35c27-23d3-4c03-b4c5-6443c09e7173
+      responses:
+        "200":
+          description: Success response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedUser"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SCIMErrorResponseBody"
+    put:
+      operationId: updateUser
+      description: Update user details
+      tags:
+        - users
+      security:
+        - ServiceAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: 23a35c27-23d3-4c03-b4c5-6443c09e7173
+      requestBody:
+        content:
+          application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateUser"
+      responses:
+        "200":
+          description: Success response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedUser"
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SCIMErrorResponseBody"
+    patch:
+      operationId: patchUser
+      description: Patch user (activate, deactivate or sync password)
+      tags:
+        - users
+      security:
+        - ServiceAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: 23a35c27-23d3-4c03-b4c5-6443c09e7173
+      requestBody:
+        content:
+          application/json:
+              schema:
+                type: object
+                required:
+                  - schemas
+                  - Operations
+                properties:
+                  schemas:
+                    type: array
+                    uniqueItems: true
+                    items:
+                      type: string
+                      example: urn:ietf:params:scim:api:messages:2.0:PatchOp
+                  Operations:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - op
+                        - value
+                      properties:
+                        op:
+                          type: string
+                          example: replace
+                        value:
+                          type: object
+                          properties:
+                            active:
+                              type: boolean
+                            password:
+                              type: string
+      responses:
+        "200":
+          description: Success response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedUser"
+        "204":
+          description: Success and no response
+        default:
+          description: Error response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SCIMErrorResponseBody"
+
+components:
+
+  securitySchemes:
+    ServiceAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    UserValues:
+      type: object
+      required:
+        - schemas
+        - userName
+        - name
+        - emails
+        - displayName
+        - locale
+        - externalId
+        - groups
+        - active
+      properties:
+        schemas:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            example: urn:ietf:params:scim:schemas:core:2.0:User
+        userName:
+          type: string
+          example: test.user@okta.local
+        name:
+          type: object
+          required:
+            - givenName
+            - familyName
+          properties:
+            givenName:
+              type: string
+              example: Test
+            familyName:
+              type: string
+              example: User
+        emails:
+          type: array
+          items:
+            type: object
+            required:
+              - primary
+              - value
+              - type
+            properties:
+              primary:
+                type: boolean
+                example: true
+              value:
+                type: string
+                example: test.user@okta.local
+              type:
+                type: string
+                example: work
+        displayName:
+          type: string
+          example: Test User
+        locale:
+          type: string
+          example: en-US
+        # TODO: what is externalId? is it in both create and update requests?
+        externalId:
+          type: string
+          example: 00ujl29u0le5T6Aj10h7
+        groups:
+          # TODO: what is the schema of this array?
+          type: array
+          example: []
+
+    CreateUser:
+      allOf:
+        - $ref: "#/components/schemas/UserValues"
+        - type: object
+          required:
+            - password
+          properties:
+            password:
+              type: string
+              # TODO: password does not get returned from create or update responses
+              example: "1mz050nq"
+
+    UpdateUser:
+      allOf:
+        - $ref: '#/components/schemas/UserValues'
+
+    SavedUser:
+      allOf:
+        - $ref: '#/components/schemas/UserValues'
+        - type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            meta:
+              type: object
+              required:
+                - resourceType
+              properties:
+                resourceType:
+                  type: string
+                  example: User
+
+    SCIMListResponseBody:
+      type: object
+      required:
+        - schemas
+        - totalResults
+        - startIndex
+        - itemsPerPage
+        - Resources
+      properties:
+        schemas:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            example: urn:ietf:params:scim:api:messages:2.0:ListResponse
+        totalResults:
+          type: integer
+          example: 0
+        startIndex:
+          type: integer
+          example: 1
+        itemsPerPage:
+          type: integer
+          example: 0
+        Resources:
+          type: array
+          items:
+            # TODO: what is the schema of user resources
+            type: object
+
+    SCIMErrorResponseBody:
+      type: object
+      required:
+        - schemas
+        - detail
+        - status
+      properties:
+        schemas:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            example: urn:ietf:params:scim:api:messages:2.0:Error
+        detail:
+          type: string
+          example: Internal service error
+        status:
+          type: integer
+          example: 500
+
